@@ -32,49 +32,75 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ros/ros.h>
 #include <kdl/chainiksolverpos_nr_jl.hpp>
 
+class BaxterTracIKServer {
+private:
+    std::string _side;
+    ros::NodeHandle _nh;
+    double _timeout;
+    std::string _urdf_param;
+    TRAC_IK::TRAC_IK *_tracik_solver;
+    KDL::Chain _chain;
+    KDL::JntArray *_nominal;
+    bool _ready;
 
-void test(ros::NodeHandle& nh, std::string side, double timeout, std::string urdf_param)
-{
-  double eps = 1e-5;
+public:
+    BaxterTracIKServer(ros::NodeHandle& nh, std::string side, double timeout, std::string urdf_param) {
+        double eps = 1e-5;
+        this->_ready = false;
+        this->_side = side;
+        this->_nh = nh;
+        this->_urdf_param = urdf_param;
+        this->_timeout = timeout;
+        this->_tracik_solver = new TRAC_IK::TRAC_IK("base", side + "_gripper", urdf_param, timeout, eps);
 
-  TRAC_IK::TRAC_IK tracik_solver("base", side + "_gripper", urdf_param, timeout, eps);
+        KDL::JntArray ll, ul; //lower joint limits, upper joint limits
 
-  KDL::Chain chain;
-  KDL::JntArray ll, ul; //lower joint limits, upper joint limits
+        if(!(this->_tracik_solver->getKDLChain(this->_chain))) {
+          ROS_ERROR("There was no valid KDL chain found");
+          return;
+        }
 
-  if(!tracik_solver.getKDLChain(chain)) {
-    ROS_ERROR("There was no valid KDL chain found");
-    return;
-  }
+        if(!(this->_tracik_solver->getKDLLimits(ll,ul))) {
+          ROS_ERROR("There were no valid KDL joint limits found");
+          return;
+        }
 
-  if(!tracik_solver.getKDLLimits(ll,ul)) {
-    ROS_ERROR("There were no valid KDL joint limits found");
-    return;
-  }
+        if(!(this->_chain.getNrOfJoints() == ll.data.size())
+           || !(this->_chain.getNrOfJoints() == ul.data.size())) {
+            ROS_ERROR("Inconsistent joint limits found");
+            return;
+        }
 
-  assert(chain.getNrOfJoints() == ll.data.size());
-  assert(chain.getNrOfJoints() == ul.data.size());
+        // Create Nominal chain configuration midway between all joint limits
+        this->_nominal = new KDL::JntArray(this->_chain.getNrOfJoints());
 
-  // Create Nominal chain configuration midway between all joint limits
-  KDL::JntArray nominal(chain.getNrOfJoints());
+        for (uint j=0; j < this->_nominal->data.size(); j++) {
+          this->_nominal->operator()(j) = (ll(j)+ul(j))/2.0;
+        }
 
-  for (uint j=0; j<nominal.data.size(); j++) {
-    nominal(j) = (ll(j)+ul(j))/2.0;
-  }    
+        this->_ready = true;
+    }
 
-  KDL::JntArray result;
-  KDL::Frame end_effector_pose(KDL::Rotation::Quaternion(-0.113, 0.992, -0.026, 0.046),
-                               KDL::Vector(0.611, -0.230, 0.085));
+    ~BaxterTracIKServer() {
+        delete this->_tracik_solver;
+        delete this->_nominal;
+    }
 
-  int rc;
-  rc = tracik_solver.CartToJnt(nominal, end_effector_pose, result);
+    void test()
+        {
+          KDL::JntArray result;
+          KDL::Frame end_effector_pose(KDL::Rotation::Quaternion(-0.113, 0.992, -0.026, 0.046),
+                                       KDL::Vector(0.611, -0.230, 0.085));
 
-  if (rc>=0)
-      ROS_INFO("SUCCESS");
-  else
-      ROS_ERROR("FAILURE");
+          int rc;
+          rc = this->_tracik_solver->CartToJnt(*(this->_nominal), end_effector_pose, result);
 
-}
+          if (rc>=0)
+              ROS_INFO("SUCCESS");
+          else
+              ROS_ERROR("FAILURE");
+        }
+};
 
 
 int main(int argc, char** argv)
@@ -88,9 +114,8 @@ int main(int argc, char** argv)
   nh.param("timeout", timeout, 0.005);
   nh.param("urdf_param", urdf_param, std::string("/robot_description"));
 
-
-  test(nh, "right", timeout, urdf_param);
-
+  BaxterTracIKServer ik(nh, "right", timeout, urdf_param);
+  ik.test();
 
   return 0;
 }
