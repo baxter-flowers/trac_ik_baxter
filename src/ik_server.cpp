@@ -90,6 +90,15 @@ public:
     bool perform_ik(trac_ik_baxter::GetConstrainedPositionIK::Request &request,
                     trac_ik_baxter::GetConstrainedPositionIK::Response &response) {
 
+          double initial_tolerance = 1e-5;
+          if(request.num_steps == 0)
+              request.num_steps = 1;
+          if(request.end_tolerance < initial_tolerance) {
+              request.num_steps = 1;
+              ROS_WARN("Invalid IK end tolerance, using the default");
+          }
+          double step = (request.end_tolerance - initial_tolerance)/request.num_steps;
+
           int rc;
           KDL::JntArray result;
           sensor_msgs::JointState joint_state;
@@ -108,7 +117,16 @@ public:
                                                        request.pose_stamp[point].pose.position.y,
                                                        request.pose_stamp[point].pose.position.z));
 
-              rc = this->_tracik_solver->CartToJnt(*(this->_nominal), end_effector_pose, result);
+
+              for(uint num_attempts=0; num_attempts<request.num_steps; ++num_attempts) {
+                  std::stringstream ss;
+                  double tolerance = initial_tolerance + num_attempts*step;
+                  ss << "Attempt num " << num_attempts +1 << " with tolerence " << tolerance << std::endl;
+                  ROS_INFO("%s", ss.str().c_str());
+                  this->_tracik_solver->setEpsilon(tolerance);
+                  rc = this->_tracik_solver->CartToJnt(*(this->_nominal), end_effector_pose, result);
+                  if(rc>=0) break;
+              }
 
               for(uint joint=0; joint<this->_chain.getNrOfJoints(); ++joint) {
                   joint_state.position.push_back(result(joint));
