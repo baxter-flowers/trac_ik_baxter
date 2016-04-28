@@ -31,7 +31,7 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <trac_ik/trac_ik.hpp>
 #include <ros/ros.h>
 #include <kdl/chainiksolverpos_nr_jl.hpp>
-#include <baxter_core_msgs/SolvePositionIK.h>
+#include <trac_ik_baxter/GetConstrainedPositionIK.h>
 #include <sensor_msgs/JointState.h>
 
 class BaxterTracIKServer {
@@ -87,8 +87,8 @@ public:
         delete this->_nominal;
     }
 
-    bool perform_ik(baxter_core_msgs::SolvePositionIK::Request &request,
-                    baxter_core_msgs::SolvePositionIK::Response &response) {
+    bool perform_ik(trac_ik_baxter::GetConstrainedPositionIK::Request &request,
+                    trac_ik_baxter::GetConstrainedPositionIK::Response &response) {
 
           int rc;
           KDL::JntArray result;
@@ -133,8 +133,12 @@ int main(int argc, char** argv)
   nh.param("timeout", timeout, 0.005);
   nh.param("urdf_param", urdf_param, std::string("/robot_description"));
 
-  BaxterTracIKServer ik("right", timeout, urdf_param);
-  ros::ServiceServer service = nh.advertiseService("compute_trac_ik", &BaxterTracIKServer::perform_ik, &ik);
+  BaxterTracIKServer left("left", timeout, urdf_param);
+  ros::ServiceServer left_service = nh.advertiseService("trac_ik_left", &BaxterTracIKServer::perform_ik, &left);
+
+  BaxterTracIKServer right("right", timeout, urdf_param);
+  ros::ServiceServer right_service = nh.advertiseService("trac_ik_right", &BaxterTracIKServer::perform_ik, &right);
+
   ros::spin();
 
   return 0;
