@@ -110,16 +110,12 @@ public:
 
               rc = this->_tracik_solver->CartToJnt(*(this->_nominal), end_effector_pose, result);
 
-              if(rc>=0) {
-                  for(uint joint=0; joint<this->_chain.getNrOfJoints(); ++joint) {
-                      joint_state.position.push_back(result(joint));
-                  }
-                  response.joints.push_back(joint_state);
-                  response.isValid.push_back(true);
+              for(uint joint=0; joint<this->_chain.getNrOfJoints(); ++joint) {
+                  joint_state.position.push_back(result(joint));
               }
-              else {
-                  response.isValid.push_back(false);
-              }
+
+              response.joints.push_back(joint_state);
+              response.isValid.push_back(rc>=0);
           }
           return true;
         }
@@ -138,7 +134,7 @@ int main(int argc, char** argv)
   nh.param("urdf_param", urdf_param, std::string("/robot_description"));
 
   BaxterTracIKServer ik("right", timeout, urdf_param);
-  ros::ServiceServer service = nh.advertiseService("compute_ik", &BaxterTracIKServer::perform_ik, &ik);
+  ros::ServiceServer service = nh.advertiseService("compute_trac_ik", &BaxterTracIKServer::perform_ik, &ik);
   ros::spin();
 
   return 0;
