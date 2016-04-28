@@ -87,6 +87,14 @@ public:
         delete this->_nominal;
     }
 
+    KDL::JntArray JointState2JntArray(const sensor_msgs::JointState &js) {
+        KDL::JntArray array(this->_chain.getNrOfJoints());
+        for(uint joint=0; joint<js.position.size(); ++joint) {
+            array(joint) = js.position[joint];
+        }
+        return array;
+    }
+
     bool perform_ik(trac_ik_baxter::GetConstrainedPositionIK::Request &request,
                     trac_ik_baxter::GetConstrainedPositionIK::Response &response) {
 
@@ -107,6 +115,7 @@ public:
               if(joint.getType()!=KDL::Joint::None)
                   joint_state.name.push_back(joint.getName());
           }
+          bool seeds_provided = request.seed_angles.size() == request.pose_stamp.size();
 
           for(uint point=0; point<request.pose_stamp.size(); ++point) {
               KDL::Frame end_effector_pose(KDL::Rotation::Quaternion(request.pose_stamp[point].pose.orientation.x,
@@ -117,6 +126,9 @@ public:
                                                        request.pose_stamp[point].pose.position.y,
                                                        request.pose_stamp[point].pose.position.z));
 
+              KDL::JntArray seed(this->_chain.getNrOfJoints());
+              if(seeds_provided)
+                  seed = JointState2JntArray(request.seed_angles[point]);
 
               for(uint num_attempts=0; num_attempts<request.num_steps; ++num_attempts) {
                   std::stringstream ss;
@@ -124,7 +136,8 @@ public:
                   ss << "Attempt num " << num_attempts +1 << " with tolerence " << tolerance << std::endl;
                   ROS_INFO("%s", ss.str().c_str());
                   this->_tracik_solver->setEpsilon(tolerance);
-                  rc = this->_tracik_solver->CartToJnt(*(this->_nominal), end_effector_pose, result);
+                  rc = this->_tracik_solver->CartToJnt(seeds_provided? seed: *(this->_nominal),
+                                                       end_effector_pose, result);
                   if(rc>=0) break;
               }
 
