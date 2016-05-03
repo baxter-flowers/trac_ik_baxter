@@ -21,7 +21,7 @@ ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
 IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
 INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, t_config_DI
 DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
 LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE 
 OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
@@ -58,18 +58,18 @@ public:
 
         if(!(this->_tracik_solver->getKDLChain(this->_chain))) {
           ROS_ERROR("There was no valid KDL chain found");
-          return;
+          exit(EXIT_FAILURE);
         }
 
         if(!(this->_tracik_solver->getKDLLimits(ll,ul))) {
           ROS_ERROR("There were no valid KDL joint limits found");
-          return;
+          exit(EXIT_FAILURE);
         }
 
         if(!(this->_chain.getNrOfJoints() == ll.data.size())
            || !(this->_chain.getNrOfJoints() == ul.data.size())) {
             ROS_ERROR("Inconsistent joint limits found");
-            return;
+            exit(EXIT_FAILURE);
         }
 
         // Create Nominal chain configuration midway between all joint limits
@@ -97,6 +97,9 @@ public:
 
     bool perform_ik(trac_ik_baxter::GetConstrainedPositionIK::Request &request,
                     trac_ik_baxter::GetConstrainedPositionIK::Response &response) {
+
+          if(!this->_ready)
+              return false;
 
           double initial_tolerance = 1e-5;
           if(request.num_steps == 0)
