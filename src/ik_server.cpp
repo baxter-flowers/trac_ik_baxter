@@ -121,6 +121,7 @@ public:
           bool seeds_provided = request.seed_angles.size() == request.pose_stamp.size();
 
           for(uint point=0; point<request.pose_stamp.size(); ++point) {
+              joint_state.position.clear();
               KDL::Frame end_effector_pose(KDL::Rotation::Quaternion(request.pose_stamp[point].pose.orientation.x,
                                                                      request.pose_stamp[point].pose.orientation.y,
                                                                      request.pose_stamp[point].pose.orientation.z,
