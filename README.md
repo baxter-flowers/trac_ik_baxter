@@ -44,6 +44,9 @@ sensor_msgs/JointState[] seed_angles
 float32 end_tolerance
 uint8 num_steps
 ```
+
+If you do not need the IK server to increase tolerance in case of `IK not found` error, just leave `end_tolerance` and `num_steps` blank, although it then warns that tolerance is invalid the server will behave as the original TRAC IK package, performing only 1 attempt with tolerance = `1e-5`.
+
 ## TRAC IK Response 
 ```
 # joints[i]      == joint angle solution for each pose_state[i]
