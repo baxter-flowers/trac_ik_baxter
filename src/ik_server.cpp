@@ -139,7 +139,7 @@ public:
                   double tolerance = initial_tolerance + num_attempts*step;
                   ss << "Attempt num " << num_attempts +1 << " with tolerence " << tolerance << std::endl;
                   ROS_INFO("%s", ss.str().c_str());
-                  this->_tracik_solver->setEpsilon(tolerance);
+                  // this->_tracik_solver->setEpsilon(tolerance);
                   rc = this->_tracik_solver->CartToJnt(seeds_provided? seed: *(this->_nominal),
                                                        end_effector_pose, result);
                   if(rc>=0) break;
